@@ -17,7 +17,8 @@ class SiteCodeForm(NetBoxModelForm):
         fields = ("site", "location", "code", "comments", "tags")
 
     def clean(self):
-        cleaned = super().clean()
+        super().clean()
+        cleaned = self.cleaned_data
         site, location = cleaned.get("site"), cleaned.get("location")
         if bool(site) == bool(location):
             raise forms.ValidationError("Choose exactly one of Site or Location.")
