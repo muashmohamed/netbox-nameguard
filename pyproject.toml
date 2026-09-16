@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netbox-nameguard"
+version = "0.1.0"
+description = "Standardize and enforce device naming conventions across your NetBox inventory."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Your Name" }]
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["netbox_nameguard*"]

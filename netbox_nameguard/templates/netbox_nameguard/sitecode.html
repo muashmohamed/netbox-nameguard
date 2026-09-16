@@ -1,0 +1,25 @@
+{% extends 'generic/object.html' %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col col-md-6">
+    <div class="card">
+      <h5 class="card-header">Site Code</h5>
+      <table class="table table-hover attr-table">
+        <tr>
+          <th scope="row">Target</th>
+          <td>{{ object.target }}</td>
+        </tr>
+        <tr>
+          <th scope="row">Code</th>
+          <td><span class="badge text-bg-blue">{{ object.code }}</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Comments</th>
+          <td>{{ object.comments|default:"—" }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'generic/object.html' %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col col-md-6">
+    <div class="card">
+      <h5 class="card-header">Naming Pattern</h5>
+      <table class="table table-hover attr-table">
+        <tr>
+          <th scope="row">Device Role</th>
+          <td>{{ object.device_role }}</td>
+        </tr>
+        <tr>
+          <th scope="row">Template</th>
+          <td><code>{{ object.template }}</code></td>
+        </tr>
+        <tr>
+          <th scope="row">Sequence Width</th>
+          <td>{{ object.seq_width }}</td>
+        </tr>
+        <tr>
+          <th scope="row">Sequence Policy</th>
+          <td>{{ object.get_seq_policy_display }}</td>
+        </tr>
+        <tr>
+          <th scope="row">Comments</th>
+          <td>{{ object.comments|default:"—" }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

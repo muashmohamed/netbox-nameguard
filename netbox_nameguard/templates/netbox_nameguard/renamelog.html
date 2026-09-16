@@ -1,0 +1,19 @@
+{% extends 'generic/object.html' %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col col-md-6">
+    <div class="card">
+      <h5 class="card-header">Rename Log Entry</h5>
+      <table class="table table-hover attr-table">
+        <tr><th scope="row">Device</th><td>{% if object.device %}<a href="{{ object.device.get_absolute_url }}">{{ object.device }}</a>{% else %}{{ object.device_name_snapshot }} (deleted){% endif %}</td></tr>
+        <tr><th scope="row">Old Name</th><td>{{ object.old_name }}</td></tr>
+        <tr><th scope="row">New Name</th><td>{{ object.new_name }}</td></tr>
+        <tr><th scope="row">Batch</th><td><code>{{ object.batch_id }}</code></td></tr>
+        <tr><th scope="row">Applied By</th><td>{{ object.applied_by|default:"—" }}</td></tr>
+        <tr><th scope="row">Applied At</th><td>{{ object.applied_at }}</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
