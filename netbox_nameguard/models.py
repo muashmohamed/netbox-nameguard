@@ -40,7 +40,7 @@ class SiteCode(NetBoxModel):
         ordering = ("code",)
         constraints = [
             models.CheckConstraint(
-                check=(
+                condition=(
                     models.Q(site__isnull=False, location__isnull=True)
                     | models.Q(site__isnull=True, location__isnull=False)
                 ),

@@ -69,7 +69,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="sitecode",
             constraint=models.CheckConstraint(
-                check=models.Q(("location__isnull", True), ("site__isnull", False)) | models.Q(("location__isnull", False), ("site__isnull", True)),
+                condition=models.Q(("location__isnull", True), ("site__isnull", False)) | models.Q(("location__isnull", False), ("site__isnull", True)),
                 name="nameguard_sitecode_exactly_one_target",
             ),
         ),
