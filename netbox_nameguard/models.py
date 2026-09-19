@@ -32,7 +32,7 @@ class SiteCode(NetBoxModel):
     code = models.CharField(
         max_length=4,
         unique=True,
-        help_text="Fixed 4-letter code, e.g. HOBB or KKSH.",
+        help_text="Fixed 4-character code (letters and numbers), e.g. HOBB, KKSH, or HML1.",
     )
     comments = models.TextField(blank=True)
 
@@ -68,8 +68,8 @@ class SiteCode(NetBoxModel):
             raise ValidationError("Set exactly one of Site or Location, not both/neither.")
         if self.code:
             self.code = self.code.strip().upper()
-            if len(self.code) != 4 or not self.code.isalpha():
-                raise ValidationError({"code": "Code must be exactly 4 letters."})
+            if len(self.code) != 4 or not self.code.isalnum():
+                raise ValidationError({"code": "Code must be exactly 4 characters (letters and numbers)."})
 
 
 class NamingPattern(NetBoxModel):
