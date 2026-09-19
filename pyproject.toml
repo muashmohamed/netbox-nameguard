@@ -16,4 +16,7 @@ dependencies = []
 include = ["netbox_nameguard*"]
 
 [tool.setuptools.package-data]
-netbox_nameguard = ["templates/*.html", "templates/*/*.html", "templates/*/*/*.html"]
+netbox_nameguard = [
+    "templates/*.html", "templates/*/*.html", "templates/*/*/*.html",
+    "static/*.js", "static/*/*.js",
+]

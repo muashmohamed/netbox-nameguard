@@ -16,6 +16,9 @@ class SiteCodeForm(NetBoxModelForm):
         model = SiteCode
         fields = ("site", "location", "code", "comments", "tags")
 
+    class Media:
+        js = ("netbox_nameguard/sitecode_form.js",)
+
     def clean(self):
         super().clean()
         cleaned = self.cleaned_data
