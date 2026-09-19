@@ -59,6 +59,7 @@ class ComplianceTable(tables.Table):
         """,
     )
     expected_name = tables.Column(verbose_name="Proposed Name")
+    location_code = tables.Column(verbose_name="Location Code", empty_values=())
     reason = tables.Column(verbose_name="Notes")
 
     class Meta:

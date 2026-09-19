@@ -186,11 +186,11 @@ class BulkRenameExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="nameguard_dry_run.csv"'
         writer = csv.writer(response)
-        writer.writerow(["device_id", "current_name", "proposed_name", "site_code", "pattern"])
+        writer.writerow(["device_id", "current_name", "proposed_name", "site_code", "location_code", "pattern"])
         for r in results:
             writer.writerow([
                 r.device.pk, r.current_name, r.expected_name or "",
-                r.site_code or "", r.pattern.template if r.pattern else "",
+                r.site_code or "", r.location_code or "", r.pattern.template if r.pattern else "",
             ])
         return response
 

@@ -111,10 +111,10 @@ class NamingPattern(NetBoxModel):
     def clean(self):
         super().clean()
         if self.template:
-            if "{SITE}" not in self.template:
-                raise ValidationError({"template": "Template must include the {SITE} token."})
             if "{SEQ}" not in self.template:
                 raise ValidationError({"template": "Template must include the {SEQ} token."})
+            if "{SITE}" not in self.template and "{LOCATION}" not in self.template:
+                raise ValidationError({"template": "Template must include {SITE} and/or {LOCATION}."})
 
 
 class RenameLog(NetBoxModel):
