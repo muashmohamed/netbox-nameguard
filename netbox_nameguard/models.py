@@ -40,6 +40,7 @@ class SiteCode(NetBoxModel):
         help_text=(
             "4-character code (letters and numbers), e.g. HOBB, KKSH, or HML1. "
             "A 5th character is allowed for special cases that need it, e.g. BLDGA. "
+            "Floor-kind codes are the exception: 1-2 characters, e.g. 0F, 1F. "
             "Must be unique within its owning Site — the same code (e.g. PH for "
             "Powerhouse) can be reused at a different Site."
         ),
@@ -91,8 +92,14 @@ class SiteCode(NetBoxModel):
             self.location_kind = ""
         if self.code:
             self.code = self.code.strip().upper()
-            if not (4 <= len(self.code) <= 5) or not self.code.isalnum():
-                raise ValidationError({"code": "Code must be 4 characters (5 allowed for special cases), letters and numbers only."})
+            if not self.code.isalnum():
+                raise ValidationError({"code": "Code must be letters and numbers only."})
+            if self.location_kind == LocationKindChoices.FLOOR:
+                if not (1 <= len(self.code) <= 2):
+                    raise ValidationError({"code": "Floor codes must be 1-2 characters, e.g. 0F, 1F, 2F."})
+            else:
+                if not (4 <= len(self.code) <= 5):
+                    raise ValidationError({"code": "Code must be 4 characters (5 allowed for special cases), letters and numbers only."})
 
     def save(self, *args, **kwargs):
         # Always keep owning_site correct, even on programmatic saves that
