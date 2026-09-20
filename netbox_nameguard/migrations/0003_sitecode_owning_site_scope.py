@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("dcim", "0001_initial"),
-        ("netbox_nameguard", "0002_alter_sitecode_code_length"),
+        ("netbox_nameguard", "0001_initial"),
     ]
 
     operations = [
