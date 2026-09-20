@@ -10,6 +10,12 @@
           <th scope="row">Target</th>
           <td>{{ object.target }}</td>
         </tr>
+        {% if object.location %}
+        <tr>
+          <th scope="row">Kind</th>
+          <td>{{ object.get_location_kind_display|default:"—" }}</td>
+        </tr>
+        {% endif %}
         <tr>
           <th scope="row">Code</th>
           <td><span class="badge text-bg-blue">{{ object.code }}</span></td>

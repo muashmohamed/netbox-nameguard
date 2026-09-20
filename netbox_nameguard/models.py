@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from netbox.models import NetBoxModel
 
-from .choices import SequencePolicyChoices
+from .choices import LocationKindChoices, SequencePolicyChoices
 
 
 class SiteCode(NetBoxModel):
@@ -28,6 +28,12 @@ class SiteCode(NetBoxModel):
         related_name="nameguard_codes",
         blank=True,
         null=True,
+    )
+    location_kind = models.CharField(
+        max_length=20,
+        choices=LocationKindChoices,
+        blank=True,
+        help_text="Required when targeting a Location: is this a Building, a Floor, or Other?",
     )
     code = models.CharField(
         max_length=5,
@@ -79,6 +85,10 @@ class SiteCode(NetBoxModel):
         super().clean()
         if bool(self.site) == bool(self.location):
             raise ValidationError("Set exactly one of Site or Location, not both/neither.")
+        if self.location and not self.location_kind:
+            raise ValidationError({"location_kind": "Required when targeting a Location: is this a Building, Floor, or Other?"})
+        if self.site and self.location_kind:
+            self.location_kind = ""
         if self.code:
             self.code = self.code.strip().upper()
             if not (4 <= len(self.code) <= 5) or not self.code.isalnum():

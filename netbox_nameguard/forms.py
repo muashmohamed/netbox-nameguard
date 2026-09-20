@@ -14,7 +14,10 @@ class SiteCodeForm(NetBoxModelForm):
 
     class Meta:
         model = SiteCode
-        fields = ("site", "location", "code", "comments", "tags")
+        fields = ("site", "location", "location_kind", "code", "comments", "tags")
+        widgets = {
+            "location_kind": forms.RadioSelect(),
+        }
 
     class Media:
         js = ("netbox_nameguard/sitecode_form.js",)
@@ -25,6 +28,8 @@ class SiteCodeForm(NetBoxModelForm):
         site, location = cleaned.get("site"), cleaned.get("location")
         if bool(site) == bool(location):
             raise forms.ValidationError("Choose exactly one of Site or Location.")
+        if location and not cleaned.get("location_kind"):
+            raise forms.ValidationError({"location_kind": "Required when targeting a Location: Building, Floor, or Other?"})
         return cleaned
 
 

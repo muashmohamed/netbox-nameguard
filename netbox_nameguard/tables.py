@@ -8,11 +8,12 @@ from .models import NamingPattern, RenameLog, SiteCode
 class SiteCodeTable(NetBoxTable):
     code = tables.Column(linkify=True)
     target = tables.Column(verbose_name="Site / Location")
+    location_kind = columns.ChoiceFieldColumn(verbose_name="Kind")
 
     class Meta(NetBoxTable.Meta):
         model = SiteCode
-        fields = ("pk", "id", "code", "target", "comments", "tags")
-        default_columns = ("code", "target")
+        fields = ("pk", "id", "code", "target", "location_kind", "comments", "tags")
+        default_columns = ("code", "target", "location_kind")
 
 
 class NamingPatternTable(NetBoxTable):
@@ -60,7 +61,8 @@ class ComplianceTable(tables.Table):
         """,
     )
     expected_name = tables.Column(verbose_name="Proposed Name")
-    location_code = tables.Column(verbose_name="Location Code", empty_values=())
+    location_code = tables.Column(verbose_name="Building Code", empty_values=())
+    floor_code = tables.Column(verbose_name="Floor Code", empty_values=())
     reason = tables.Column(verbose_name="Notes")
 
     class Meta:

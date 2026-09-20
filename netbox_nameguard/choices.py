@@ -27,3 +27,22 @@ class ComplianceStatusChoices(ChoiceSet):
         (UNCONFIGURED, "Unconfigured", "gray"),
         (COLLISION, "Collision", "orange"),
     ]
+
+
+class LocationKindChoices(ChoiceSet):
+    """
+    Tags what a Location-based SiteCode actually represents, so the naming
+    engine's ancestor-walk can tell "the nearest Building" apart from "the
+    nearest Floor" instead of treating every registered Location code the
+    same way. Only meaningful when a SiteCode targets a Location (not a
+    Site) — left blank for Site-level codes.
+    """
+    BUILDING = "building"
+    FLOOR = "floor"
+    OTHER = "other"  # e.g. an outdoor/compound zone that isn't a building or floor
+
+    CHOICES = [
+        (BUILDING, "Building"),
+        (FLOOR, "Floor"),
+        (OTHER, "Other"),
+    ]

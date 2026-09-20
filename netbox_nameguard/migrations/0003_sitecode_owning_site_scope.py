@@ -15,14 +15,14 @@ def backfill_owning_site(apps, schema_editor):
 
 
 def noop_reverse(apps, schema_editor):
-    pass
+    pass  # owning_site is dropped entirely on reverse; nothing else to undo
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
         ("dcim", "0001_initial"),
-        ("netbox_nameguard", "0001_initial"),
+        ("netbox_nameguard", "0002_alter_sitecode_code_length"),
     ]
 
     operations = [

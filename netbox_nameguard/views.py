@@ -118,11 +118,17 @@ class ComplianceListView(LoginRequiredMixin, PermissionRequiredMixin, View):
     def get(self, request):
         results, filter_form = _run_compliance(request)
 
+        # Sorting compares values directly; None mixed with strings raises
+        # a TypeError in Python 3, so normalize to empty string for display
+        # and sorting purposes only (naming.py's own logic still sees the
+        # real None internally, this happens after that's already done).
         for r in results:
             if r.expected_name is None:
                 r.expected_name = ""
             if r.location_code is None:
                 r.location_code = ""
+            if r.floor_code is None:
+                r.floor_code = ""
 
         table = ComplianceTable(results)
         RequestConfig(request, paginate=False).configure(table)
@@ -194,11 +200,11 @@ class BulkRenameExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="nameguard_dry_run.csv"'
         writer = csv.writer(response)
-        writer.writerow(["device_id", "current_name", "proposed_name", "site_code", "location_code", "pattern"])
+        writer.writerow(["device_id", "current_name", "proposed_name", "site_code", "location_code", "floor_code", "pattern"])
         for r in results:
             writer.writerow([
                 r.device.pk, r.current_name, r.expected_name or "",
-                r.site_code or "", r.location_code or "", r.pattern.template if r.pattern else "",
+                r.site_code or "", r.location_code or "", r.floor_code or "", r.pattern.template if r.pattern else "",
             ])
         return response
 
