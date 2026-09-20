@@ -30,9 +30,21 @@ class SiteCode(NetBoxModel):
         null=True,
     )
     code = models.CharField(
-        max_length=4,
-        unique=True,
-        help_text="Fixed 4-character code (letters and numbers), e.g. HOBB, KKSH, or HML1.",
+        max_length=5,
+        help_text=(
+            "4-character code (letters and numbers), e.g. HOBB, KKSH, or HML1. "
+            "A 5th character is allowed for special cases that need it, e.g. BLDGA. "
+            "Must be unique within its owning Site — the same code (e.g. PH for "
+            "Powerhouse) can be reused at a different Site."
+        ),
+    )
+    owning_site = models.ForeignKey(
+        to="dcim.Site",
+        on_delete=models.CASCADE,
+        related_name="nameguard_owned_codes",
+        editable=False,
+        null=True,
+        help_text="Auto-computed: this SiteCode's own Site, or its Location's Site.",
     )
     comments = models.TextField(blank=True)
 
@@ -48,6 +60,7 @@ class SiteCode(NetBoxModel):
             ),
             models.UniqueConstraint(fields=["site"], name="nameguard_unique_site"),
             models.UniqueConstraint(fields=["location"], name="nameguard_unique_location"),
+            models.UniqueConstraint(fields=["owning_site", "code"], name="nameguard_unique_code_per_owning_site"),
         ]
         verbose_name = "Site Code"
         verbose_name_plural = "Site Codes"
@@ -68,8 +81,17 @@ class SiteCode(NetBoxModel):
             raise ValidationError("Set exactly one of Site or Location, not both/neither.")
         if self.code:
             self.code = self.code.strip().upper()
-            if len(self.code) != 4 or not self.code.isalnum():
-                raise ValidationError({"code": "Code must be exactly 4 characters (letters and numbers)."})
+            if not (4 <= len(self.code) <= 5) or not self.code.isalnum():
+                raise ValidationError({"code": "Code must be 4 characters (5 allowed for special cases), letters and numbers only."})
+
+    def save(self, *args, **kwargs):
+        # Always keep owning_site correct, even on programmatic saves that
+        # might skip full_clean() (e.g. some API/script paths).
+        if self.site_id:
+            self.owning_site_id = self.site_id
+        elif self.location_id:
+            self.owning_site_id = self.location.site_id
+        super().save(*args, **kwargs)
 
 
 class NamingPattern(NetBoxModel):
