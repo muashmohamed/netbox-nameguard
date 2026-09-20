@@ -47,10 +47,11 @@ class ComplianceTable(tables.Table):
     """
     pk = columns.ToggleColumn(accessor="device.pk")
     name = tables.Column(accessor="current_name", verbose_name="Current Name", linkify=lambda record: record.device.get_absolute_url())
-    site = tables.Column(accessor="device.site", verbose_name="Site")
-    role = tables.Column(accessor="device.role", verbose_name="Role")
+    site = tables.Column(accessor="device.site", verbose_name="Site", order_by=("device.site.name",))
+    role = tables.Column(accessor="device.role", verbose_name="Role", order_by=("device.role.name",))
     status = tables.TemplateColumn(
         verbose_name="Naming Status",
+        order_by=("status",),
         template_code="""
             {% if record.status == 'compliant' %}<span class="badge text-bg-green">Compliant</span>
             {% elif record.status == 'noncompliant' %}<span class="badge text-bg-red">Non-compliant</span>
@@ -65,3 +66,4 @@ class ComplianceTable(tables.Table):
     class Meta:
         attrs = {"class": "table table-hover object-list"}
         empty_text = "No devices to display."
+        order_by = ("name",)

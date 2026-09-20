@@ -7,6 +7,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
+from django_tables2 import RequestConfig
 
 from dcim.models import Device
 from netbox.views import generic
@@ -116,8 +117,15 @@ class ComplianceListView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
     def get(self, request):
         results, filter_form = _run_compliance(request)
+
+        for r in results:
+            if r.expected_name is None:
+                r.expected_name = ""
+            if r.location_code is None:
+                r.location_code = ""
+
         table = ComplianceTable(results)
-        table.configure(request)
+        RequestConfig(request, paginate=False).configure(table)
 
         summary = {
             "total": len(results),
