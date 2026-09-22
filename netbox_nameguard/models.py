@@ -32,6 +32,7 @@ class AtollType(NetBoxModel):
         help_text="Uncheck for non-government additions like Greater Male' (GRM).",
     )
     description = models.TextField(blank=True)
+    comments = models.TextField(blank=True)
 
     class Meta:
         ordering = ("code",)
@@ -70,6 +71,7 @@ class IslandType(NetBoxModel):
         help_text="What the code means, e.g. Kaashidhoo, Hulhumale Phase 1, Male.",
     )
     description = models.TextField(blank=True)
+    comments = models.TextField(blank=True)
 
     class Meta:
         ordering = ("atoll__code", "code")
@@ -111,6 +113,7 @@ class FacilityType(NetBoxModel):
         help_text="What the prefix means, e.g. Powerhouse, Substation, Apollo Tower.",
     )
     description = models.TextField(blank=True)
+    comments = models.TextField(blank=True)
 
     class Meta:
         ordering = ("prefix",)
