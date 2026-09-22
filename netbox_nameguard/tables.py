@@ -39,7 +39,14 @@ class FacilityTypeTable(NetBoxTable):
 
 class SiteCodeTable(NetBoxTable):
     code = tables.Column(linkify=True)
-    target = tables.Column(verbose_name="Site / Location")
+    target = tables.Column(verbose_name="Site / Location", accessor="target", order_by=("site", "location"))
+
+    def render_target(self, record):
+        if record.site_id:
+            return record.site.name
+        if record.location_id:
+            return f"{record.location.site.name} / {record.location.name}"
+        return ""
     location_kind = columns.ChoiceFieldColumn(verbose_name="Kind")
     meaning = tables.Column(
         verbose_name="Meaning",
