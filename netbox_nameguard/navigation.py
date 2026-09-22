@@ -1,5 +1,14 @@
 from netbox.plugins import PluginMenu, PluginMenuButton, PluginMenuItem
 
+atolltype_buttons = [
+    PluginMenuButton(link="plugins:netbox_nameguard:atolltype_add", title="Add", icon_class="mdi mdi-plus-thick"),
+]
+islandtype_buttons = [
+    PluginMenuButton(link="plugins:netbox_nameguard:islandtype_add", title="Add", icon_class="mdi mdi-plus-thick"),
+]
+facilitytype_buttons = [
+    PluginMenuButton(link="plugins:netbox_nameguard:facilitytype_add", title="Add", icon_class="mdi mdi-plus-thick"),
+]
 sitecode_buttons = [
     PluginMenuButton(link="plugins:netbox_nameguard:sitecode_add", title="Add", icon_class="mdi mdi-plus-thick"),
 ]
@@ -11,6 +20,23 @@ menu = PluginMenu(
     label="NameGuard",
     icon_class="mdi mdi-tag-check-outline",
     groups=(
+        ("Glossary", (
+            PluginMenuItem(
+                link="plugins:netbox_nameguard:atolltype_list",
+                link_text="Atoll Types",
+                buttons=atolltype_buttons,
+            ),
+            PluginMenuItem(
+                link="plugins:netbox_nameguard:islandtype_list",
+                link_text="Island Types",
+                buttons=islandtype_buttons,
+            ),
+            PluginMenuItem(
+                link="plugins:netbox_nameguard:facilitytype_list",
+                link_text="Facility Types",
+                buttons=facilitytype_buttons,
+            ),
+        )),
         ("Naming Rules", (
             PluginMenuItem(
                 link="plugins:netbox_nameguard:sitecode_list",

@@ -2,18 +2,62 @@ import django_tables2 as tables
 
 from netbox.tables import NetBoxTable, columns
 
-from .models import NamingPattern, RenameLog, SiteCode
+from .models import AtollType, FacilityType, IslandType, NamingPattern, RenameLog, SiteCode
+
+
+class AtollTypeTable(NetBoxTable):
+    code = tables.Column(linkify=True)
+    name = tables.Column()
+    is_official = columns.BooleanColumn(verbose_name="Official Govt Code")
+
+    class Meta(NetBoxTable.Meta):
+        model = AtollType
+        fields = ("pk", "id", "code", "name", "is_official", "description", "tags")
+        default_columns = ("code", "name", "is_official")
+
+
+class IslandTypeTable(NetBoxTable):
+    code = tables.Column(linkify=True)
+    atoll = tables.Column(linkify=True)
+    name = tables.Column()
+
+    class Meta(NetBoxTable.Meta):
+        model = IslandType
+        fields = ("pk", "id", "atoll", "code", "name", "description", "tags")
+        default_columns = ("atoll", "code", "name")
+
+
+class FacilityTypeTable(NetBoxTable):
+    prefix = tables.Column(linkify=True)
+    name = tables.Column()
+
+    class Meta(NetBoxTable.Meta):
+        model = FacilityType
+        fields = ("pk", "id", "prefix", "name", "description", "tags")
+        default_columns = ("prefix", "name")
 
 
 class SiteCodeTable(NetBoxTable):
     code = tables.Column(linkify=True)
     target = tables.Column(verbose_name="Site / Location")
     location_kind = columns.ChoiceFieldColumn(verbose_name="Kind")
+    meaning = tables.Column(
+        verbose_name="Meaning",
+        accessor="facility_label",
+        empty_values=(),
+        order_by=None,
+    )
+
+    def render_meaning(self, record):
+        # facility_label covers Location-targeted Facility codes;
+        # site_label covers Site-targeted Atoll-Island codes. A given
+        # SiteCode only ever has one or the other non-empty.
+        return record.facility_label or record.site_label or ""
 
     class Meta(NetBoxTable.Meta):
         model = SiteCode
-        fields = ("pk", "id", "code", "target", "location_kind", "comments", "tags")
-        default_columns = ("code", "target", "location_kind")
+        fields = ("pk", "id", "code", "target", "location_kind", "meaning", "comments", "tags")
+        default_columns = ("code", "target", "location_kind", "meaning")
 
 
 class NamingPatternTable(NetBoxTable):

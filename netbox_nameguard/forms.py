@@ -5,7 +5,27 @@ from netbox.forms import NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField
 
 from .choices import SequencePolicyChoices
-from .models import NamingPattern, SiteCode
+from .models import AtollType, FacilityType, IslandType, NamingPattern, SiteCode
+
+
+class AtollTypeForm(NetBoxModelForm):
+    class Meta:
+        model = AtollType
+        fields = ("code", "name", "is_official", "description", "comments", "tags")
+
+
+class IslandTypeForm(NetBoxModelForm):
+    atoll = DynamicModelChoiceField(queryset=AtollType.objects.all())
+
+    class Meta:
+        model = IslandType
+        fields = ("atoll", "code", "name", "description", "comments", "tags")
+
+
+class FacilityTypeForm(NetBoxModelForm):
+    class Meta:
+        model = FacilityType
+        fields = ("prefix", "name", "description", "comments", "tags")
 
 
 class SiteCodeForm(NetBoxModelForm):
@@ -29,7 +49,7 @@ class SiteCodeForm(NetBoxModelForm):
         if bool(site) == bool(location):
             raise forms.ValidationError("Choose exactly one of Site or Location.")
         if location and not cleaned.get("location_kind"):
-            raise forms.ValidationError({"location_kind": "Required when targeting a Location: Building, Floor, or Other?"})
+            raise forms.ValidationError({"location_kind": "Required when targeting a Location: Facility, Building, Floor, or Other?"})
         return cleaned
 
 

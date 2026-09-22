@@ -3,9 +3,51 @@ from django.urls import path
 from netbox.views.generic import ObjectChangeLogView
 
 from . import views
-from .models import NamingPattern, SiteCode
+from .models import AtollType, FacilityType, IslandType, NamingPattern, SiteCode
 
 urlpatterns = (
+    # Atoll Types (glossary)
+    path("atoll-types/", views.AtollTypeListView.as_view(), name="atolltype_list"),
+    path("atoll-types/add/", views.AtollTypeEditView.as_view(), name="atolltype_add"),
+    path("atoll-types/delete/", views.AtollTypeBulkDeleteView.as_view(), name="atolltype_bulk_delete"),
+    path("atoll-types/<int:pk>/", views.AtollTypeView.as_view(), name="atolltype"),
+    path("atoll-types/<int:pk>/edit/", views.AtollTypeEditView.as_view(), name="atolltype_edit"),
+    path("atoll-types/<int:pk>/delete/", views.AtollTypeDeleteView.as_view(), name="atolltype_delete"),
+    path(
+        "atoll-types/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="atolltype_changelog",
+        kwargs={"model": AtollType},
+    ),
+
+    # Island Types (glossary)
+    path("island-types/", views.IslandTypeListView.as_view(), name="islandtype_list"),
+    path("island-types/add/", views.IslandTypeEditView.as_view(), name="islandtype_add"),
+    path("island-types/delete/", views.IslandTypeBulkDeleteView.as_view(), name="islandtype_bulk_delete"),
+    path("island-types/<int:pk>/", views.IslandTypeView.as_view(), name="islandtype"),
+    path("island-types/<int:pk>/edit/", views.IslandTypeEditView.as_view(), name="islandtype_edit"),
+    path("island-types/<int:pk>/delete/", views.IslandTypeDeleteView.as_view(), name="islandtype_delete"),
+    path(
+        "island-types/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="islandtype_changelog",
+        kwargs={"model": IslandType},
+    ),
+
+    # Facility Types (glossary)
+    path("facility-types/", views.FacilityTypeListView.as_view(), name="facilitytype_list"),
+    path("facility-types/add/", views.FacilityTypeEditView.as_view(), name="facilitytype_add"),
+    path("facility-types/delete/", views.FacilityTypeBulkDeleteView.as_view(), name="facilitytype_bulk_delete"),
+    path("facility-types/<int:pk>/", views.FacilityTypeView.as_view(), name="facilitytype"),
+    path("facility-types/<int:pk>/edit/", views.FacilityTypeEditView.as_view(), name="facilitytype_edit"),
+    path("facility-types/<int:pk>/delete/", views.FacilityTypeDeleteView.as_view(), name="facilitytype_delete"),
+    path(
+        "facility-types/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="facilitytype_changelog",
+        kwargs={"model": FacilityType},
+    ),
+
     # Site Codes
     path("site-codes/", views.SiteCodeListView.as_view(), name="sitecode_list"),
     path("site-codes/add/", views.SiteCodeEditView.as_view(), name="sitecode_add"),

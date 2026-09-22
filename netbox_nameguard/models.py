@@ -1,3 +1,4 @@
+import re
 import uuid
 
 from django.conf import settings
@@ -10,15 +11,156 @@ from netbox.models import NetBoxModel
 from .choices import LocationKindChoices, SequencePolicyChoices
 
 
+class AtollType(NetBoxModel):
+    """
+    Glossary entry: what an Atoll-code prefix (the segment before the
+    first hyphen in a Site-level code) actually means, e.g. "K" -> Kaafu,
+    "GRM" -> Greater Male' (not an official government code, but treated
+    the same way here).
+    """
+    code = models.CharField(
+        max_length=6,
+        unique=True,
+        help_text="The Atoll code as used in Site-level SiteCodes, e.g. K, HDh, GRM.",
+    )
+    name = models.CharField(
+        max_length=50,
+        help_text="What the code means, e.g. Kaafu, Haa Dhaalu, Greater Male'.",
+    )
+    is_official = models.BooleanField(
+        default=True,
+        help_text="Uncheck for non-government additions like Greater Male' (GRM).",
+    )
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("code",)
+        verbose_name = "Atoll Type"
+        verbose_name_plural = "Atoll Types"
+
+    def __str__(self):
+        return f"{self.code} = {self.name}"
+
+    def get_absolute_url(self):
+        return reverse("plugins:netbox_nameguard:atolltype", args=[self.pk])
+
+    def clean(self):
+        super().clean()
+        if self.code:
+            self.code = self.code.strip()
+
+
+class IslandType(NetBoxModel):
+    """
+    Glossary entry: what an Island-code (the segment after the first
+    hyphen in a Site-level code) means, scoped to its Atoll since island
+    codes are only guaranteed unique within their own atoll, not globally.
+    """
+    atoll = models.ForeignKey(
+        to=AtollType,
+        on_delete=models.PROTECT,
+        related_name="islands",
+    )
+    code = models.CharField(
+        max_length=10,
+        help_text="The Island code as used after the Atoll in a Site-level SiteCode, e.g. KAA, HUL1, MAL.",
+    )
+    name = models.CharField(
+        max_length=50,
+        help_text="What the code means, e.g. Kaashidhoo, Hulhumale Phase 1, Male.",
+    )
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("atoll__code", "code")
+        constraints = [
+            models.UniqueConstraint(fields=["atoll", "code"], name="nameguard_unique_island_code_per_atoll"),
+        ]
+        verbose_name = "Island Type"
+        verbose_name_plural = "Island Types"
+
+    def __str__(self):
+        return f"{self.atoll.code}-{self.code} = {self.name}"
+
+    def get_absolute_url(self):
+        return reverse("plugins:netbox_nameguard:islandtype", args=[self.pk])
+
+    def clean(self):
+        super().clean()
+        if self.code:
+            self.code = self.code.strip().upper()
+
+
+class FacilityType(NetBoxModel):
+    """
+    Glossary entry: what a Facility-code prefix actually means, so codes
+    like "PH1", "SS10" don't need their meaning re-explained everywhere.
+    A code's prefix is its leading letters (e.g. "PH" in "PH1"); anything
+    trailing is treated as the instance number for self-numbering types
+    (Powerhouse, Substation, Pump Station). One-off named facilities
+    (Apollo Tower, Gaakoshi) just use their whole code as the prefix with
+    no trailing number.
+    """
+    prefix = models.CharField(
+        max_length=6,
+        unique=True,
+        help_text="The leading letters of the code, e.g. PH, SS, PS, or the whole code for a one-off facility like APL.",
+    )
+    name = models.CharField(
+        max_length=50,
+        help_text="What the prefix means, e.g. Powerhouse, Substation, Apollo Tower.",
+    )
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("prefix",)
+        verbose_name = "Facility Type"
+        verbose_name_plural = "Facility Types"
+
+    def __str__(self):
+        return f"{self.prefix} = {self.name}"
+
+    def get_absolute_url(self):
+        return reverse("plugins:netbox_nameguard:facilitytype", args=[self.pk])
+
+    def clean(self):
+        super().clean()
+        if self.prefix:
+            self.prefix = self.prefix.strip().upper()
+            if not self.prefix.isalpha():
+                raise ValidationError({"prefix": "Prefix must be letters only (the number is computed from the code itself)."})
+
+    @classmethod
+    def label_for(cls, code: str) -> str:
+        """
+        Turn a Facility-kind SiteCode value into a human-readable label
+        using this glossary, e.g. "SS10" -> "Substation 10", "APL" ->
+        "Apollo Tower". Falls back to the raw code if no glossary entry
+        matches its prefix.
+        """
+        if not code:
+            return code
+        m = re.match(r"^([A-Z]+)(\d*)$", code.upper())
+        if not m:
+            return code
+        prefix, number = m.groups()
+        entry = cls.objects.filter(prefix=prefix).first()
+        if not entry:
+            return code
+        return f"{entry.name} {number}" if number else entry.name
+
+
 class SiteCode(NetBoxModel):
     """
     A single registry mapping exactly one of {Site, Location} to a fixed,
     reusable code.
 
     Site-level codes carry the full Atoll-Island hierarchy, hyphen-
-    separated (e.g. "K-KAA"), and feed the {SITE} token. Location-level
-    codes are scoped to a single Facility ("PH1", "SS1"), Building ("B1"),
-    Floor ("GF", "F1"), or Other zone, tagged via location_kind.
+    separated (e.g. "K-KAA"), and feed the {SITE} token; their human
+    meaning comes from AtollType/IslandType. Location-level codes are
+    scoped to a single Facility ("PH1", "SS1"), Building ("B1"), Floor
+    ("GF", "F1"), or Other zone, tagged via location_kind; a Facility-kind
+    code's meaning comes from FacilityType.
     """
     site = models.ForeignKey(
         to="dcim.Site",
@@ -44,11 +186,12 @@ class SiteCode(NetBoxModel):
         max_length=20,
         help_text=(
             "Site-level codes carry the Atoll-Island hierarchy, hyphen-"
-            "separated, e.g. K-KAA. Location-level codes are scoped to "
-            "their kind: Facility (e.g. PH1, PH2, SS1, up to 5 chars), "
-            "Building (e.g. B1, up to 4 chars), Floor (e.g. GF, F1, up to "
-            "3 chars), Other (up to 6 chars). Letters, numbers, and "
-            "hyphens only. Must be unique within its owning Site."
+            "separated, e.g. K-KAA (see Atoll/Island Types for what each "
+            "part means). Location-level codes are scoped to their kind: "
+            "Facility (e.g. PH1, PH2, SS1, up to 5 chars - see Facility "
+            "Types for meaning), Building (e.g. B1, up to 4 chars), Floor "
+            "(e.g. GF, F1, up to 3 chars), Other (up to 6 chars). Letters, "
+            "numbers, and hyphens only. Must be unique within its owning Site."
         ),
     )
     owning_site = models.ForeignKey(
@@ -87,6 +230,33 @@ class SiteCode(NetBoxModel):
     @property
     def target(self):
         return self.site or self.location
+
+    @property
+    def facility_label(self):
+        """Human-readable meaning of this code, only meaningful for Facility-kind codes."""
+        if self.location_kind == LocationKindChoices.FACILITY:
+            return FacilityType.label_for(self.code)
+        return ""
+
+    @property
+    def site_label(self):
+        """
+        Human-readable meaning of a Site-level code, e.g. "K-KAA" ->
+        "Kaafu, Kaashidhoo". Only meaningful when this SiteCode targets a
+        Site (not a Location). Falls back gracefully if the Atoll/Island
+        isn't in the glossary yet.
+        """
+        if not self.site_id or not self.code:
+            return ""
+        parts = self.code.split("-", 1)
+        if len(parts) != 2:
+            return ""
+        atoll_code, island_code = parts
+        atoll = AtollType.objects.filter(code=atoll_code).first()
+        island = IslandType.objects.filter(atoll__code=atoll_code, code=island_code).first()
+        atoll_name = atoll.name if atoll else atoll_code
+        island_name = island.name if island else island_code
+        return f"{atoll_name}, {island_name}"
 
     def clean(self):
         super().clean()

@@ -14,9 +14,96 @@ from netbox.views import generic
 
 from . import naming
 from .choices import ComplianceStatusChoices
-from .forms import BulkRenameConfirmForm, ComplianceFilterForm, NamingPatternForm, SiteCodeForm
-from .models import NamingPattern, RenameLog, SiteCode
-from .tables import ComplianceTable, NamingPatternTable, RenameLogTable, SiteCodeTable
+from .forms import (
+    AtollTypeForm, BulkRenameConfirmForm, ComplianceFilterForm, FacilityTypeForm,
+    IslandTypeForm, NamingPatternForm, SiteCodeForm,
+)
+from .models import AtollType, FacilityType, IslandType, NamingPattern, RenameLog, SiteCode
+from .tables import (
+    AtollTypeTable, ComplianceTable, FacilityTypeTable, IslandTypeTable,
+    NamingPatternTable, RenameLogTable, SiteCodeTable,
+)
+
+
+# ---------------------------------------------------------------------------
+# AtollType CRUD (glossary)
+# ---------------------------------------------------------------------------
+
+class AtollTypeListView(generic.ObjectListView):
+    queryset = AtollType.objects.all()
+    table = AtollTypeTable
+
+
+class AtollTypeView(generic.ObjectView):
+    queryset = AtollType.objects.all()
+
+
+class AtollTypeEditView(generic.ObjectEditView):
+    queryset = AtollType.objects.all()
+    form = AtollTypeForm
+
+
+class AtollTypeDeleteView(generic.ObjectDeleteView):
+    queryset = AtollType.objects.all()
+
+
+class AtollTypeBulkDeleteView(generic.BulkDeleteView):
+    queryset = AtollType.objects.all()
+    table = AtollTypeTable
+
+
+# ---------------------------------------------------------------------------
+# IslandType CRUD (glossary)
+# ---------------------------------------------------------------------------
+
+class IslandTypeListView(generic.ObjectListView):
+    queryset = IslandType.objects.all()
+    table = IslandTypeTable
+
+
+class IslandTypeView(generic.ObjectView):
+    queryset = IslandType.objects.all()
+
+
+class IslandTypeEditView(generic.ObjectEditView):
+    queryset = IslandType.objects.all()
+    form = IslandTypeForm
+
+
+class IslandTypeDeleteView(generic.ObjectDeleteView):
+    queryset = IslandType.objects.all()
+
+
+class IslandTypeBulkDeleteView(generic.BulkDeleteView):
+    queryset = IslandType.objects.all()
+    table = IslandTypeTable
+
+
+# ---------------------------------------------------------------------------
+# FacilityType CRUD (glossary)
+# ---------------------------------------------------------------------------
+
+class FacilityTypeListView(generic.ObjectListView):
+    queryset = FacilityType.objects.all()
+    table = FacilityTypeTable
+
+
+class FacilityTypeView(generic.ObjectView):
+    queryset = FacilityType.objects.all()
+
+
+class FacilityTypeEditView(generic.ObjectEditView):
+    queryset = FacilityType.objects.all()
+    form = FacilityTypeForm
+
+
+class FacilityTypeDeleteView(generic.ObjectDeleteView):
+    queryset = FacilityType.objects.all()
+
+
+class FacilityTypeBulkDeleteView(generic.BulkDeleteView):
+    queryset = FacilityType.objects.all()
+    table = FacilityTypeTable
 
 
 # ---------------------------------------------------------------------------
@@ -118,10 +205,6 @@ class ComplianceListView(LoginRequiredMixin, PermissionRequiredMixin, View):
     def get(self, request):
         results, filter_form = _run_compliance(request)
 
-        # Sorting compares values directly; None mixed with strings raises
-        # a TypeError in Python 3, so normalize to empty string for display
-        # and sorting purposes only (naming.py's own logic still sees the
-        # real None internally, this happens after that's already done).
         for r in results:
             if r.expected_name is None:
                 r.expected_name = ""
@@ -148,12 +231,6 @@ class ComplianceListView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
 
 class BulkRenamePreviewView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    """
-    Step 1 of enforcement: never renames anything directly. Takes the
-    devices selected on the compliance dashboard, computes what their
-    proposed names would be, and shows a preview the user must explicitly
-    confirm (or export as CSV) before anything is written.
-    """
     permission_required = "netbox_nameguard.change_sitecode"
     template_name = "netbox_nameguard/bulk_rename_preview.html"
 
@@ -188,7 +265,6 @@ class BulkRenamePreviewView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
 
 class BulkRenameExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    """Download the current dry-run preview as a CSV: current name -> proposed name."""
     permission_required = "netbox_nameguard.change_sitecode"
 
     def get(self, request):
@@ -210,11 +286,6 @@ class BulkRenameExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
 
 class BulkRenameApplyView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    """
-    Step 2: only reached after the user has seen the preview and ticked the
-    explicit confirmation checkbox. Applies renames and writes a RenameLog
-    row (grouped under one batch_id) for every device changed.
-    """
     permission_required = "netbox_nameguard.change_sitecode"
 
     def post(self, request):
@@ -232,7 +303,7 @@ class BulkRenameApplyView(LoginRequiredMixin, PermissionRequiredMixin, View):
         applied = 0
         for r in results:
             if r.status != ComplianceStatusChoices.NONCOMPLIANT or not r.expected_name:
-                continue  # skip anything that became a collision or already compliant
+                continue
             old_name = r.device.name
             r.device.name = r.expected_name
             r.device.save()
