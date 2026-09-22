@@ -19,12 +19,13 @@ class AtollTypeTable(NetBoxTable):
 class IslandTypeTable(NetBoxTable):
     code = tables.Column(linkify=True)
     atoll = tables.Column(linkify=True)
+    full_code = tables.Column(verbose_name="Full Code (Atoll-Island)", empty_values=())
     name = tables.Column()
 
     class Meta(NetBoxTable.Meta):
         model = IslandType
-        fields = ("pk", "id", "atoll", "code", "name", "description", "tags")
-        default_columns = ("atoll", "code", "name")
+        fields = ("pk", "id", "atoll", "code", "full_code", "name", "description", "tags")
+        default_columns = ("atoll", "code", "full_code", "name")
 
 
 class FacilityTypeTable(NetBoxTable):

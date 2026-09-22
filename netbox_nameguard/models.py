@@ -92,6 +92,11 @@ class IslandType(NetBoxModel):
         if self.code:
             self.code = self.code.strip().upper()
 
+    @property
+    def full_code(self):
+        """The actual unique identifier: Atoll-Island combined, e.g. AA-MAN."""
+        return f"{self.atoll.code}-{self.code}"
+
 
 class FacilityType(NetBoxModel):
     """
