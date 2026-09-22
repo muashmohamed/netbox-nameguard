@@ -49,9 +49,17 @@ class SiteCodeTable(NetBoxTable):
     )
 
     def render_meaning(self, record):
-        # facility_label covers Location-targeted Facility codes;
-        # site_label covers Site-targeted Atoll-Island codes. A given
-        # SiteCode only ever has one or the other non-empty.
+        # For a Facility-kind code, show the generic category alongside
+        # the specific place it actually is, since PH1 alone could be any
+        # island's powerhouse - e.g. "Powerhouse - MAN Powerhouse" for a
+        # Location whose real name is MAN Powerhouse. site_label still
+        # covers Site-targeted Atoll-Island codes on its own.
+        if record.location_kind == "facility" and record.location_id:
+            category = record.facility_label
+            specific = record.location.name
+            if category and category != specific:
+                return f"{category} - {specific}"
+            return specific or category
         return record.facility_label or record.site_label or ""
 
     class Meta(NetBoxTable.Meta):
