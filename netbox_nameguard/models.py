@@ -40,7 +40,7 @@ class AtollType(NetBoxModel):
         verbose_name_plural = "Atoll Types"
 
     def __str__(self):
-        return f"{self.code} = {self.name}"
+        return f"{self.code} ({self.name})"
 
     def get_absolute_url(self):
         return reverse("plugins:netbox_nameguard:atolltype", args=[self.pk])
@@ -82,7 +82,7 @@ class IslandType(NetBoxModel):
         verbose_name_plural = "Island Types"
 
     def __str__(self):
-        return f"{self.atoll.code}-{self.code} = {self.name}"
+        return f"{self.atoll.code}-{self.code} ({self.name})"
 
     def get_absolute_url(self):
         return reverse("plugins:netbox_nameguard:islandtype", args=[self.pk])
@@ -121,7 +121,7 @@ class FacilityType(NetBoxModel):
         verbose_name_plural = "Facility Types"
 
     def __str__(self):
-        return f"{self.prefix} = {self.name}"
+        return f"{self.prefix} ({self.name})"
 
     def get_absolute_url(self):
         return reverse("plugins:netbox_nameguard:facilitytype", args=[self.pk])
