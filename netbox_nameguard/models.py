@@ -15,11 +15,10 @@ class SiteCode(NetBoxModel):
     A single registry mapping exactly one of {Site, Location} to a fixed,
     reusable code.
 
-    Site-level codes carry the full Atoll-Island-Facility hierarchy,
-    hyphen-separated (e.g. "K-KAA-PH1"), and feed the {SITE} token in a
-    NamingPattern's template. Location-level codes are scoped to a
-    single Building ("B1"), Floor ("GF", "F1"), or Other zone, tagged
-    via location_kind.
+    Site-level codes carry the full Atoll-Island hierarchy, hyphen-
+    separated (e.g. "K-KAA"), and feed the {SITE} token. Location-level
+    codes are scoped to a single Facility ("PH1", "SS1"), Building ("B1"),
+    Floor ("GF", "F1"), or Other zone, tagged via location_kind.
     """
     site = models.ForeignKey(
         to="dcim.Site",
@@ -39,17 +38,17 @@ class SiteCode(NetBoxModel):
         max_length=20,
         choices=LocationKindChoices,
         blank=True,
-        help_text="Required when targeting a Location: is this a Building, a Floor, or Other?",
+        help_text="Required when targeting a Location: Facility, Building, Floor, or Other?",
     )
     code = models.CharField(
         max_length=20,
         help_text=(
-            "Site-level codes carry the full hierarchy, hyphen-separated, "
-            "e.g. K-KAA-PH1 (Atoll-Island-Facility). Location-level codes "
-            "are scoped to their kind: Building (e.g. B1, up to 4 chars), "
-            "Floor (e.g. GF, F1, up to 3 chars), Other (up to 6 chars). "
-            "Letters, numbers, and hyphens only. Must be unique within its "
-            "owning Site."
+            "Site-level codes carry the Atoll-Island hierarchy, hyphen-"
+            "separated, e.g. K-KAA. Location-level codes are scoped to "
+            "their kind: Facility (e.g. PH1, PH2, SS1, up to 5 chars), "
+            "Building (e.g. B1, up to 4 chars), Floor (e.g. GF, F1, up to "
+            "3 chars), Other (up to 6 chars). Letters, numbers, and "
+            "hyphens only. Must be unique within its owning Site."
         ),
     )
     owning_site = models.ForeignKey(
@@ -94,7 +93,7 @@ class SiteCode(NetBoxModel):
         if bool(self.site) == bool(self.location):
             raise ValidationError("Set exactly one of Site or Location, not both/neither.")
         if self.location and not self.location_kind:
-            raise ValidationError({"location_kind": "Required when targeting a Location: is this a Building, Floor, or Other?"})
+            raise ValidationError({"location_kind": "Required when targeting a Location: Facility, Building, Floor, or Other?"})
         if self.site and self.location_kind:
             self.location_kind = ""
         if self.code:
@@ -105,7 +104,10 @@ class SiteCode(NetBoxModel):
             if self.code.startswith("-") or self.code.endswith("-") or "--" in self.code:
                 raise ValidationError({"code": "Code cannot start/end with a hyphen or contain a double hyphen."})
 
-            if self.location_kind == LocationKindChoices.FLOOR:
+            if self.location_kind == LocationKindChoices.FACILITY:
+                if not (1 <= len(self.code) <= 5):
+                    raise ValidationError({"code": "Facility codes must be 1-5 characters, e.g. PH1, SS1, PS1."})
+            elif self.location_kind == LocationKindChoices.FLOOR:
                 if not (1 <= len(self.code) <= 3):
                     raise ValidationError({"code": "Floor codes must be 1-3 characters, e.g. GF, F1, F10."})
             elif self.location_kind == LocationKindChoices.BUILDING:
@@ -115,7 +117,6 @@ class SiteCode(NetBoxModel):
                 if not (1 <= len(self.code) <= 6):
                     raise ValidationError({"code": "Other-zone codes must be 1-6 characters."})
             else:
-                # Site-level: full Atoll-Island-Facility hierarchy
                 if not (1 <= len(self.code) <= 20):
                     raise ValidationError({"code": "Site code must be 1-20 characters (letters, numbers, hyphens)."})
 
@@ -130,7 +131,7 @@ class SiteCode(NetBoxModel):
 class NamingPattern(NetBoxModel):
     """
     A configurable naming template for a given Device Role, e.g.
-    Camera -> "{SITE}-CAM-{SEQ}".
+    Camera -> "{SITE}-{FACILITY}-CAM-{SEQ}".
     """
     device_role = models.OneToOneField(
         to="dcim.DeviceRole",
@@ -139,7 +140,7 @@ class NamingPattern(NetBoxModel):
     )
     template = models.CharField(
         max_length=100,
-        help_text="Use {SITE} and {SEQ} tokens, e.g. {SITE}-CAM-{SEQ}",
+        help_text="Use {SITE}, {FACILITY}, {LOCATION}, {FLOOR}, and {SEQ} tokens.",
     )
     seq_width = models.PositiveSmallIntegerField(
         default=3,
@@ -168,8 +169,8 @@ class NamingPattern(NetBoxModel):
         if self.template:
             if "{SEQ}" not in self.template:
                 raise ValidationError({"template": "Template must include the {SEQ} token."})
-            if "{SITE}" not in self.template and "{LOCATION}" not in self.template:
-                raise ValidationError({"template": "Template must include {SITE} and/or {LOCATION}."})
+            if not any(t in self.template for t in ("{SITE}", "{FACILITY}", "{LOCATION}", "{FLOOR}")):
+                raise ValidationError({"template": "Template must include at least one of {SITE}/{FACILITY}/{LOCATION}/{FLOOR}."})
 
 
 class RenameLog(NetBoxModel):

@@ -2,12 +2,8 @@ from utilities.choices import ChoiceSet
 
 
 class SequencePolicyChoices(ChoiceSet):
-    """
-    Controls how the next {SEQ} value is chosen for a given Site + Naming
-    Pattern when a new name is generated.
-    """
-    GAP_AWARE = "gap_aware"       # reuse the lowest freed-up number
-    ALWAYS_INCREMENT = "always_increment"  # never reuse a retired number
+    GAP_AWARE = "gap_aware"
+    ALWAYS_INCREMENT = "always_increment"
 
     CHOICES = [
         (GAP_AWARE, "Reuse freed-up numbers (gap-aware)"),
@@ -18,8 +14,8 @@ class SequencePolicyChoices(ChoiceSet):
 class ComplianceStatusChoices(ChoiceSet):
     COMPLIANT = "compliant"
     NONCOMPLIANT = "noncompliant"
-    UNCONFIGURED = "unconfigured"  # no SiteCode and/or NamingPattern found
-    COLLISION = "collision"        # proposed name collides with another device
+    UNCONFIGURED = "unconfigured"
+    COLLISION = "collision"
 
     CHOICES = [
         (COMPLIANT, "Compliant", "green"),
@@ -32,16 +28,19 @@ class ComplianceStatusChoices(ChoiceSet):
 class LocationKindChoices(ChoiceSet):
     """
     Tags what a Location-based SiteCode actually represents, so the naming
-    engine's ancestor-walk can tell "the nearest Building" apart from "the
-    nearest Floor" instead of treating every registered Location code the
-    same way. Only meaningful when a SiteCode targets a Location (not a
-    Site) — left blank for Site-level codes.
+    engine's ancestor-walk can tell "the nearest Facility" apart from "the
+    nearest Building" apart from "the nearest Floor" instead of treating
+    every registered Location code the same way. Only meaningful when a
+    SiteCode targets a Location (not a Site) — left blank for Site-level
+    codes.
     """
+    FACILITY = "facility"
     BUILDING = "building"
     FLOOR = "floor"
-    OTHER = "other"  # e.g. an outdoor/compound zone that isn't a building or floor
+    OTHER = "other"
 
     CHOICES = [
+        (FACILITY, "Facility"),
         (BUILDING, "Building"),
         (FLOOR, "Floor"),
         (OTHER, "Other"),
