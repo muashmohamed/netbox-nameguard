@@ -106,9 +106,12 @@ class ComplianceTable(tables.Table):
     (a Device paired with computed status), not a plain queryset of one
     model. Supports bulk selection for the rename workflow.
     """
-    pk = columns.ToggleColumn(
+    pk = tables.CheckBoxColumn(
         accessor="device.pk",
+        orderable=False,
         attrs={
+            "th__input": {"class": "form-check-input"},
+            "td__input": {"class": "form-check-input"},
             "th": {"style": "position: sticky; left: 0; background: var(--bs-body-bg); z-index: 2;"},
             "td": {"style": "position: sticky; left: 0; background: var(--bs-body-bg); z-index: 1;"},
         },
