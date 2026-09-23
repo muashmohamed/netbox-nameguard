@@ -282,15 +282,42 @@ def build_seq_cache(devices):
 
 
 def resolve_collisions(results):
-    seen = {}
-    for r in results:
-        if r.status != ComplianceStatusChoices.NONCOMPLIANT or not r.expected_name:
-            continue
-        seen.setdefault(r.expected_name, []).append(r)
+    """
+    Given a list of ComplianceResult for non-compliant devices, detect when
+    two or more would be assigned the identical proposed name and instead
+    of blocking them, hand out sequential numbers so each gets a unique,
+    valid name - the same way a person renaming them one at a time would.
+    """
+    from collections import defaultdict
 
-    for name, group in seen.items():
-        if len(group) > 1:
-            for r in group:
-                r.status = ComplianceStatusChoices.COLLISION
-                r.reason = f"{len(group)} devices would all be renamed to '{name}'."
+    groups = defaultdict(list)
+    for r in results:
+        if r.status != ComplianceStatusChoices.NONCOMPLIANT or not r.expected_name or not r.pattern:
+            continue
+        key = (r.site_code, r.facility_code, r.location_code, r.floor_code, r.pattern.pk)
+        groups[key].append(r)
+
+    for key, group in groups.items():
+        if len(group) <= 1:
+            continue
+
+        pattern_obj = group[0].pattern
+        group.sort(key=lambda r: r.current_name or "")
+
+        used = set(_used_sequences(
+            pattern_obj, site_code=group[0].site_code, facility_code=group[0].facility_code,
+            location_code=group[0].location_code, floor_code=group[0].floor_code,
+        ))
+
+        seq = 1
+        for r in group:
+            while seq in used:
+                seq += 1
+            r.expected_name = render_name(
+                pattern_obj.template, seq, pattern_obj.seq_width,
+                site_code=r.site_code, facility_code=r.facility_code,
+                location_code=r.location_code, floor_code=r.floor_code,
+            )
+            used.add(seq)
+            seq += 1
     return results
