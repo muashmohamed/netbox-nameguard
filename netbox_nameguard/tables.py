@@ -93,6 +93,7 @@ class RenameLogTable(NetBoxTable):
     new_name = tables.Column()
     applied_by = tables.Column()
     applied_at = columns.DateTimeColumn()
+    actions = columns.ActionsColumn(actions=())  # read-only audit trail - no edit/delete links
 
     class Meta(NetBoxTable.Meta):
         model = RenameLog
