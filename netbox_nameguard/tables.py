@@ -121,9 +121,23 @@ class ComplianceTable(tables.Table):
         """,
     )
     expected_name = tables.Column(verbose_name="Proposed Name")
+    facility_name = tables.Column(verbose_name="Facility Name", accessor="facility_code", empty_values=())
     location_code = tables.Column(verbose_name="Building Code", empty_values=())
     floor_code = tables.Column(verbose_name="Floor Code", empty_values=())
     reason = tables.Column(verbose_name="Notes")
+
+    def render_facility_name(self, record):
+        # Show the SPECIFIC place (e.g. "NRD Office"), not the generic
+        # glossary category (e.g. "Building") - walk up from the device's
+        # own Location to find the one tagged Facility-kind.
+        location = record.device.location
+        while location is not None:
+            if hasattr(location, "nameguard_codes"):
+                sc = location.nameguard_codes.filter(location_kind="facility").first()
+                if sc:
+                    return location.name
+            location = location.parent
+        return ""
 
     class Meta:
         attrs = {"class": "table table-hover object-list"}
