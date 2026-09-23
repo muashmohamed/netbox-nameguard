@@ -106,7 +106,13 @@ class ComplianceTable(tables.Table):
     (a Device paired with computed status), not a plain queryset of one
     model. Supports bulk selection for the rename workflow.
     """
-    pk = columns.ToggleColumn(accessor="device.pk")
+    pk = columns.ToggleColumn(
+        accessor="device.pk",
+        attrs={
+            "th": {"style": "position: sticky; left: 0; background: var(--bs-body-bg); z-index: 2;"},
+            "td": {"style": "position: sticky; left: 0; background: var(--bs-body-bg); z-index: 1;"},
+        },
+    )
     name = tables.Column(accessor="current_name", verbose_name="Current Name", linkify=lambda record: record.device.get_absolute_url())
     site = tables.Column(accessor="device.site", verbose_name="Site", order_by=("device.site.name",))
     role = tables.Column(accessor="device.role", verbose_name="Role", order_by=("device.role.name",))
@@ -121,23 +127,10 @@ class ComplianceTable(tables.Table):
         """,
     )
     expected_name = tables.Column(verbose_name="Proposed Name")
-    facility_name = tables.Column(verbose_name="Facility Name", accessor="facility_code", empty_values=())
-    location_code = tables.Column(verbose_name="Building Code", empty_values=())
-    floor_code = tables.Column(verbose_name="Floor Code", empty_values=())
+    facility_name = tables.Column(verbose_name="Facility Name", accessor="facility_name", empty_values=())
+    location_code = tables.Column(verbose_name="Building Code", empty_values=(), visible=False)
+    floor_code = tables.Column(verbose_name="Floor Code", empty_values=(), visible=False)
     reason = tables.Column(verbose_name="Notes")
-
-    def render_facility_name(self, record):
-        # Show the SPECIFIC place (e.g. "NRD Office"), not the generic
-        # glossary category (e.g. "Building") - walk up from the device's
-        # own Location to find the one tagged Facility-kind.
-        location = record.device.location
-        while location is not None:
-            if hasattr(location, "nameguard_codes"):
-                sc = location.nameguard_codes.filter(location_kind="facility").first()
-                if sc:
-                    return location.name
-            location = location.parent
-        return ""
 
     class Meta:
         attrs = {"class": "table table-hover object-list"}

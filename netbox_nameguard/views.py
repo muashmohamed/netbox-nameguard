@@ -212,6 +212,9 @@ class ComplianceListView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 r.location_code = ""
             if r.floor_code is None:
                 r.floor_code = ""
+            r.facility_name = naming.get_facility_place_name(r.device) or ""
+
+        results.sort(key=lambda r: ((r.device.site.name if r.device.site else ""), r.facility_name))
 
         table = ComplianceTable(results)
         RequestConfig(request, paginate=False).configure(table)

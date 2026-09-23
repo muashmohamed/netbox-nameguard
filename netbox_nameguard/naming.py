@@ -59,6 +59,20 @@ def get_floor_code_for_device(device) -> Optional[str]:
     return _walk_for_kind(device, LocationKindChoices.FLOOR)
 
 
+def get_facility_place_name(device) -> Optional[str]:
+    """
+    The specific place name (e.g. "NRD Office"), not the generic glossary
+    category (e.g. "Building") - walks up from the device's own Location
+    to find the nearest one tagged Facility-kind, and returns ITS name.
+    """
+    location = device.location
+    while location is not None:
+        if hasattr(location, "nameguard_codes") and location.nameguard_codes.filter(location_kind=LocationKindChoices.FACILITY).exists():
+            return location.name
+        location = location.parent
+    return None
+
+
 def _location_parent_id(location_id):
     from dcim.models import Location
 
