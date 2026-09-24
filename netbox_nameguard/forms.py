@@ -1,6 +1,6 @@
 from django import forms
 
-from dcim.models import Device, DeviceRole, Location, Site
+from dcim.models import Device, DeviceRole, Location, Rack, Site
 from netbox.forms import NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField
 
@@ -98,6 +98,22 @@ class BulkRenameConfirmForm(forms.Form):
     """
     pk = forms.ModelMultipleChoiceField(
         queryset=Device.objects.all(),
+        widget=forms.MultipleHiddenInput,
+    )
+    confirm = forms.BooleanField(
+        required=True,
+        label="I have reviewed the proposed names above and want to apply them.",
+    )
+
+
+class RackBulkRenameConfirmForm(forms.Form):
+    """
+    Same as BulkRenameConfirmForm but validates pk against Rack, not Device -
+    keeping these separate prevents a Rack pk ever being mistakenly matched
+    against a Device row that happens to share the same numeric id.
+    """
+    pk = forms.ModelMultipleChoiceField(
+        queryset=Rack.objects.all(),
         widget=forms.MultipleHiddenInput,
     )
     confirm = forms.BooleanField(
