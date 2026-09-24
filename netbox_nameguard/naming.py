@@ -417,6 +417,8 @@ def resolve_collisions(results):
     two or more would be assigned the identical proposed name and instead
     of blocking them, hand out sequential numbers so each gets a unique,
     valid name - the same way a person renaming them one at a time would.
+    Works for both Device (NamingPattern) and Rack (RackNamingPattern)
+    results, since the two use different used-sequence lookups.
     """
     from collections import defaultdict
 
@@ -434,10 +436,16 @@ def resolve_collisions(results):
         pattern_obj = group[0].pattern
         group.sort(key=lambda r: r.current_name or "")
 
-        used = set(_used_sequences(
-            pattern_obj, site_code=group[0].site_code, facility_code=group[0].facility_code,
-            location_code=group[0].location_code, floor_code=group[0].floor_code,
-        ))
+        if isinstance(pattern_obj, RackNamingPattern):
+            used = set(_used_rack_sequences(
+                pattern_obj, site_code=group[0].site_code, facility_code=group[0].facility_code,
+                location_code=group[0].location_code, floor_code=group[0].floor_code,
+            ))
+        else:
+            used = set(_used_sequences(
+                pattern_obj, site_code=group[0].site_code, facility_code=group[0].facility_code,
+                location_code=group[0].location_code, floor_code=group[0].floor_code,
+            ))
 
         seq = 1
         for r in group:
