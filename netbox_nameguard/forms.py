@@ -5,7 +5,7 @@ from netbox.forms import NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField
 
 from .choices import SequencePolicyChoices
-from .models import AtollType, FacilityType, IslandType, NamingPattern, SiteCode
+from .models import AtollType, FacilityType, IslandType, NamingPattern, RackNamingPattern, SiteCode
 
 
 class AtollTypeForm(NetBoxModelForm):
@@ -26,6 +26,15 @@ class FacilityTypeForm(NetBoxModelForm):
     class Meta:
         model = FacilityType
         fields = ("prefix", "name", "description", "comments", "tags")
+
+
+class RackNamingPatternForm(NetBoxModelForm):
+    class Meta:
+        model = RackNamingPattern
+        fields = ("name", "template", "seq_width", "seq_policy", "comments", "tags")
+        widgets = {
+            "seq_policy": forms.RadioSelect(),
+        }
 
 
 class SiteCodeForm(NetBoxModelForm):
@@ -65,6 +74,16 @@ class NamingPatternForm(NetBoxModelForm):
 class ComplianceFilterForm(forms.Form):
     site = DynamicModelChoiceField(queryset=Site.objects.all(), required=False)
     device_role = DynamicModelChoiceField(queryset=DeviceRole.objects.all(), required=False)
+    status = forms.ChoiceField(
+        choices=(("", "All"), ("compliant", "Compliant"), ("noncompliant", "Non-compliant"),
+                 ("unconfigured", "Unconfigured"), ("collision", "Collision")),
+        required=False,
+    )
+
+
+class RackComplianceFilterForm(forms.Form):
+    """Racks have no Role, so this is a simpler filter than ComplianceFilterForm."""
+    site = DynamicModelChoiceField(queryset=Site.objects.all(), required=False)
     status = forms.ChoiceField(
         choices=(("", "All"), ("compliant", "Compliant"), ("noncompliant", "Non-compliant"),
                  ("unconfigured", "Unconfigured"), ("collision", "Collision")),

@@ -16,12 +16,15 @@ from . import naming
 from .choices import ComplianceStatusChoices
 from .forms import (
     AtollTypeForm, BulkRenameConfirmForm, ComplianceFilterForm, FacilityTypeForm,
-    IslandTypeForm, NamingPatternForm, SiteCodeForm,
+    IslandTypeForm, NamingPatternForm, RackBulkRenameConfirmForm, RackComplianceFilterForm,
+    RackNamingPatternForm, SiteCodeForm,
 )
-from .models import AtollType, FacilityType, IslandType, NamingPattern, RenameLog, SiteCode
+from .models import (
+    AtollType, FacilityType, IslandType, NamingPattern, RackNamingPattern, RenameLog, SiteCode,
+)
 from .tables import (
     AtollTypeTable, ComplianceTable, FacilityTypeTable, IslandTypeTable,
-    NamingPatternTable, RenameLogTable, SiteCodeTable,
+    NamingPatternTable, RackNamingPatternTable, RenameLogTable, SiteCodeTable,
 )
 
 
@@ -161,6 +164,33 @@ class NamingPatternBulkDeleteView(generic.BulkDeleteView):
 
 
 # ---------------------------------------------------------------------------
+# RackNamingPattern CRUD
+# ---------------------------------------------------------------------------
+
+class RackNamingPatternListView(generic.ObjectListView):
+    queryset = RackNamingPattern.objects.all()
+    table = RackNamingPatternTable
+
+
+class RackNamingPatternView(generic.ObjectView):
+    queryset = RackNamingPattern.objects.all()
+
+
+class RackNamingPatternEditView(generic.ObjectEditView):
+    queryset = RackNamingPattern.objects.all()
+    form = RackNamingPatternForm
+
+
+class RackNamingPatternDeleteView(generic.ObjectDeleteView):
+    queryset = RackNamingPattern.objects.all()
+
+
+class RackNamingPatternBulkDeleteView(generic.BulkDeleteView):
+    queryset = RackNamingPattern.objects.all()
+    table = RackNamingPatternTable
+
+
+# ---------------------------------------------------------------------------
 # RenameLog (read-only audit trail)
 # ---------------------------------------------------------------------------
 
@@ -212,9 +242,6 @@ class ComplianceListView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 r.location_code = ""
             if r.floor_code is None:
                 r.floor_code = ""
-            r.facility_name = naming.get_facility_place_name(r.device) or ""
-
-        results.sort(key=lambda r: ((r.device.site.name if r.device.site else ""), r.facility_name))
 
         table = ComplianceTable(results)
         RequestConfig(request, paginate=False).configure(table)
@@ -321,4 +348,167 @@ class BulkRenameApplyView(LoginRequiredMixin, PermissionRequiredMixin, View):
             applied += 1
 
         messages.success(request, f"Renamed {applied} device(s). See the Rename Log for details.")
+        return redirect("plugins:netbox_nameguard:renamelog_list")
+
+
+# ---------------------------------------------------------------------------
+# Rack compliance dashboard + bulk rename workflow (separate from Devices -
+# Racks have no Role and are a different NetBox model, so keeping this
+# entirely separate avoids any risk of mixing up a Device pk with a Rack pk).
+# ---------------------------------------------------------------------------
+
+def _run_rack_compliance(request):
+    from dcim.models import Rack
+
+    filter_form = RackComplianceFilterForm(request.GET or None)
+    qs = Rack.objects.all()
+    if filter_form.is_valid():
+        if filter_form.cleaned_data.get("site"):
+            qs = qs.filter(site=filter_form.cleaned_data["site"])
+
+    pattern = RackNamingPattern.objects.first()
+    seq_cache = naming.build_rack_seq_cache(qs, pattern=pattern)
+    results = [naming.check_rack(r, pattern=pattern, seq_cache=seq_cache) for r in qs]
+    naming.resolve_collisions(results)
+
+    status_filter = filter_form.cleaned_data.get("status") if filter_form.is_valid() else None
+    if status_filter:
+        results = [r for r in results if r.status == status_filter]
+
+    return results, filter_form
+
+
+class RackComplianceListView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "netbox_nameguard.view_sitecode"
+    template_name = "netbox_nameguard/rack_compliance_list.html"
+
+    def get(self, request):
+        results, filter_form = _run_rack_compliance(request)
+
+        for r in results:
+            if r.expected_name is None:
+                r.expected_name = ""
+            if r.location_code is None:
+                r.location_code = ""
+            if r.floor_code is None:
+                r.floor_code = ""
+            r.facility_name = naming.get_facility_place_name(r.device) or ""
+
+        results.sort(key=lambda r: ((r.device.site.name if r.device.site else ""), r.facility_name))
+
+        table = ComplianceTable(results)
+        RequestConfig(request, paginate=False).configure(table)
+
+        summary = {
+            "total": len(results),
+            "compliant": sum(1 for r in results if r.status == ComplianceStatusChoices.COMPLIANT),
+            "noncompliant": sum(1 for r in results if r.status == ComplianceStatusChoices.NONCOMPLIANT),
+            "collision": sum(1 for r in results if r.status == ComplianceStatusChoices.COLLISION),
+            "unconfigured": sum(1 for r in results if r.status == ComplianceStatusChoices.UNCONFIGURED),
+        }
+        return render(request, self.template_name, {
+            "table": table,
+            "filter_form": filter_form,
+            "summary": summary,
+        })
+
+
+class RackBulkRenamePreviewView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "netbox_nameguard.change_sitecode"
+    template_name = "netbox_nameguard/rack_bulk_rename_preview.html"
+
+    def post(self, request):
+        from dcim.models import Rack
+
+        pks = request.POST.getlist("pk")
+        if not pks:
+            messages.warning(request, "No racks were selected.")
+            return redirect("plugins:netbox_nameguard:rack_compliance_list")
+
+        racks = Rack.objects.filter(pk__in=pks)
+        pattern = RackNamingPattern.objects.first()
+        seq_cache = naming.build_rack_seq_cache(racks, pattern=pattern)
+        results = [naming.check_rack(r, pattern=pattern, seq_cache=seq_cache) for r in racks]
+        naming.resolve_collisions(results)
+
+        renameable = [
+            r for r in results
+            if r.status == ComplianceStatusChoices.NONCOMPLIANT and r.expected_name
+        ]
+        blocked = [r for r in results if r.status == ComplianceStatusChoices.COLLISION]
+        already_ok = [r for r in results if r.status == ComplianceStatusChoices.COMPLIANT]
+
+        confirm_form = RackBulkRenameConfirmForm(initial={"pk": [r.device.pk for r in renameable]})
+
+        request.session["nameguard_rack_preview_pks"] = [r.device.pk for r in renameable]
+
+        return render(request, self.template_name, {
+            "renameable": renameable,
+            "blocked": blocked,
+            "already_ok": already_ok,
+            "confirm_form": confirm_form,
+        })
+
+
+class RackBulkRenameExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "netbox_nameguard.change_sitecode"
+
+    def get(self, request):
+        from dcim.models import Rack
+
+        pks = request.session.get("nameguard_rack_preview_pks", [])
+        racks = Rack.objects.filter(pk__in=pks)
+        pattern = RackNamingPattern.objects.first()
+        seq_cache = naming.build_rack_seq_cache(racks, pattern=pattern)
+        results = [naming.check_rack(r, pattern=pattern, seq_cache=seq_cache) for r in racks]
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="nameguard_rack_dry_run.csv"'
+        writer = csv.writer(response)
+        writer.writerow(["rack_id", "current_name", "proposed_name", "site_code", "facility_code", "pattern"])
+        for r in results:
+            writer.writerow([
+                r.device.pk, r.current_name, r.expected_name or "",
+                r.site_code or "", r.facility_code or "", r.pattern.template if r.pattern else "",
+            ])
+        return response
+
+
+class RackBulkRenameApplyView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "netbox_nameguard.change_sitecode"
+
+    def post(self, request):
+        from dcim.models import Rack
+
+        form = RackBulkRenameConfirmForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "You must confirm before applying changes.")
+            return redirect("plugins:netbox_nameguard:rack_compliance_list")
+
+        pks = [obj.pk for obj in form.cleaned_data["pk"]]
+        racks = list(Rack.objects.filter(pk__in=pks))
+        pattern = RackNamingPattern.objects.first()
+        seq_cache = naming.build_rack_seq_cache(racks, pattern=pattern)
+        results = [naming.check_rack(r, pattern=pattern, seq_cache=seq_cache) for r in racks]
+        naming.resolve_collisions(results)
+
+        batch_id = uuid.uuid4()
+        applied = 0
+        for r in results:
+            if r.status != ComplianceStatusChoices.NONCOMPLIANT or not r.expected_name:
+                continue
+            old_name = r.device.name
+            r.device.name = r.expected_name
+            r.device.save()
+            RenameLog.objects.create(
+                rack=r.device,
+                device_name_snapshot=r.expected_name,
+                old_name=old_name or "",
+                new_name=r.expected_name,
+                batch_id=batch_id,
+                applied_by=request.user,
+            )
+            applied += 1
+
+        messages.success(request, f"Renamed {applied} rack(s). See the Rename Log for details.")
         return redirect("plugins:netbox_nameguard:renamelog_list")

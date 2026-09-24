@@ -2,7 +2,7 @@ import django_tables2 as tables
 
 from netbox.tables import NetBoxTable, columns
 
-from .models import AtollType, FacilityType, IslandType, NamingPattern, RenameLog, SiteCode
+from .models import AtollType, FacilityType, IslandType, NamingPattern, RackNamingPattern, RenameLog, SiteCode
 
 
 class AtollTypeTable(NetBoxTable):
@@ -19,13 +19,12 @@ class AtollTypeTable(NetBoxTable):
 class IslandTypeTable(NetBoxTable):
     code = tables.Column(linkify=True)
     atoll = tables.Column(linkify=True)
-    full_code = tables.Column(verbose_name="Full Code (Atoll-Island)", empty_values=())
     name = tables.Column()
 
     class Meta(NetBoxTable.Meta):
         model = IslandType
-        fields = ("pk", "id", "atoll", "code", "full_code", "name", "description", "tags")
-        default_columns = ("atoll", "code", "full_code", "name")
+        fields = ("pk", "id", "atoll", "code", "name", "description", "tags")
+        default_columns = ("atoll", "code", "name")
 
 
 class FacilityTypeTable(NetBoxTable):
@@ -57,17 +56,6 @@ class SiteCodeTable(NetBoxTable):
     )
 
     def render_meaning(self, record):
-        # For a Facility-kind code, show the generic category alongside
-        # the specific place it actually is, since PH1 alone could be any
-        # island's powerhouse - e.g. "Powerhouse - MAN Powerhouse" for a
-        # Location whose real name is MAN Powerhouse. site_label still
-        # covers Site-targeted Atoll-Island codes on its own.
-        if record.location_kind == "facility" and record.location_id:
-            category = record.facility_label
-            specific = record.location.name
-            if category and category != specific:
-                return f"{category} - {specific}"
-            return specific or category
         return record.facility_label or record.site_label or ""
 
     class Meta(NetBoxTable.Meta):
@@ -87,6 +75,17 @@ class NamingPatternTable(NetBoxTable):
         default_columns = ("device_role", "template", "seq_width", "seq_policy")
 
 
+class RackNamingPatternTable(NetBoxTable):
+    name = tables.Column(linkify=True)
+    template = tables.Column()
+    seq_policy = columns.ChoiceFieldColumn()
+
+    class Meta(NetBoxTable.Meta):
+        model = RackNamingPattern
+        fields = ("pk", "id", "name", "template", "seq_width", "seq_policy", "comments", "tags")
+        default_columns = ("name", "template", "seq_width", "seq_policy")
+
+
 class RenameLogTable(NetBoxTable):
     device = tables.Column(linkify=True)
     old_name = tables.Column()
@@ -104,8 +103,8 @@ class RenameLogTable(NetBoxTable):
 class ComplianceTable(tables.Table):
     """
     Not a NetBoxTable, since its rows are ComplianceResult dataclasses
-    (a Device paired with computed status), not a plain queryset of one
-    model. Supports bulk selection for the rename workflow.
+    (a Device or Rack paired with computed status), not a plain queryset
+    of one model. Supports bulk selection for the rename workflow.
     """
     pk = tables.CheckBoxColumn(
         accessor="device.pk",
@@ -119,7 +118,13 @@ class ComplianceTable(tables.Table):
     )
     name = tables.Column(accessor="current_name", verbose_name="Current Name", linkify=lambda record: record.device.get_absolute_url())
     site = tables.Column(accessor="device.site", verbose_name="Site", order_by=("device.site.name",))
-    role = tables.Column(accessor="device.role", verbose_name="Role", order_by=("device.role.name",))
+    role = tables.Column(accessor="device.role", verbose_name="Role", order_by=("device.role.name",), empty_values=())
+
+    def render_role(self, record):
+        # Racks have no Role in NetBox - show a plain "Rack" label instead
+        # of blowing up trying to access a field that doesn't exist there.
+        role = getattr(record.device, "role", None)
+        return str(role) if role else "Rack"
     status = tables.TemplateColumn(
         verbose_name="Naming Status",
         order_by=("status",),

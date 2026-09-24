@@ -1,3 +1,7 @@
+"""
+netbox_nameguard/api/urls.py
+"""
+
 from netbox.api.routers import NetBoxRouter
 from . import views
 
@@ -8,5 +12,6 @@ router.register('atoll-types', views.AtollTypeViewSet)
 router.register('island-types', views.IslandTypeViewSet)
 router.register('facility-types', views.FacilityTypeViewSet)
 router.register('site-codes', views.SiteCodeViewSet)
+router.register('rack-patterns', views.RackNamingPatternViewSet)
 
 urlpatterns = router.urls

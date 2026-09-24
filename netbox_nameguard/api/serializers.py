@@ -1,5 +1,9 @@
+"""
+netbox_nameguard/api/serializers.py
+"""
+
 from netbox.api.serializers import NetBoxModelSerializer
-from ..models import AtollType, FacilityType, IslandType, SiteCode
+from ..models import AtollType, FacilityType, IslandType, RackNamingPattern, SiteCode
 
 
 class AtollTypeSerializer(NetBoxModelSerializer):
@@ -23,4 +27,10 @@ class FacilityTypeSerializer(NetBoxModelSerializer):
 class SiteCodeSerializer(NetBoxModelSerializer):
     class Meta:
         model = SiteCode
+        fields = '__all__'
+
+
+class RackNamingPatternSerializer(NetBoxModelSerializer):
+    class Meta:
+        model = RackNamingPattern
         fields = '__all__'

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from .choices import ComplianceStatusChoices, LocationKindChoices, SequencePolicyChoices
-from .models import NamingPattern, SiteCode
+from .models import NamingPattern, RackNamingPattern, SiteCode
 
 TOKEN_RE = re.compile(r"\{(SITE|FACILITY|LOCATION|FLOOR|SEQ)\}")
 
@@ -278,6 +278,136 @@ def build_seq_cache(devices):
         if key not in cache:
             cache[key] = _used_sequences(pattern, site_code=site_code, facility_code=facility_code,
                                           location_code=location_code, floor_code=floor_code)
+    return cache
+
+
+def _used_rack_sequences(pattern, site_code=None, facility_code=None, location_code=None, floor_code=None):
+    from dcim.models import Rack
+
+    regex = build_name_regex(pattern.template, pattern.seq_width, site_code=site_code,
+                              facility_code=facility_code, location_code=location_code, floor_code=floor_code)
+    seqs = set()
+    for name in Rack.objects.all().values_list("name", flat=True):
+        if not name:
+            continue
+        m = regex.match(name)
+        if m:
+            seqs.add(int(m.group("seq")))
+    return seqs
+
+
+def check_rack(rack, pattern=None, seq_cache=None) -> ComplianceResult:
+    """
+    Same logic as check_device, but for a Rack against a RackNamingPattern.
+    Racks have no Role, so the pattern isn't looked up per-object here -
+    the caller passes the single (or chosen) RackNamingPattern to use.
+    """
+    current_name = rack.name or ""
+
+    if pattern is None:
+        pattern = RackNamingPattern.objects.first()
+    if not pattern:
+        return ComplianceResult(
+            device=rack,
+            status=ComplianceStatusChoices.UNCONFIGURED,
+            current_name=current_name,
+            reason="no Rack naming pattern configured",
+        )
+
+    needs_site = _pattern_uses(pattern.template, "SITE")
+    needs_facility = _pattern_uses(pattern.template, "FACILITY")
+    needs_location = _pattern_uses(pattern.template, "LOCATION")
+    needs_floor = _pattern_uses(pattern.template, "FLOOR")
+
+    site_code = get_site_level_code(rack) if needs_site else None
+    facility_code = get_facility_code_for_device(rack) if needs_facility else None
+    location_code = get_location_code_for_device(rack) if needs_location else None
+    floor_code = get_floor_code_for_device(rack) if needs_floor else None
+
+    missing = []
+    if needs_site and not site_code:
+        missing.append("no Site code registered")
+    if needs_facility and not facility_code:
+        missing.append("no Facility code registered on this rack or any ancestor location")
+    if needs_location and not location_code:
+        missing.append("no Building code registered on this rack or any ancestor location")
+    if needs_floor and not floor_code:
+        missing.append("no Floor code registered on this rack or any ancestor location")
+    if missing:
+        return ComplianceResult(
+            device=rack,
+            status=ComplianceStatusChoices.UNCONFIGURED,
+            current_name=current_name,
+            pattern=pattern,
+            reason="; ".join(missing),
+        )
+
+    regex = build_name_regex(pattern.template, pattern.seq_width, site_code=site_code,
+                              facility_code=facility_code, location_code=location_code, floor_code=floor_code)
+    if regex.match(current_name):
+        return ComplianceResult(
+            device=rack,
+            status=ComplianceStatusChoices.COMPLIANT,
+            current_name=current_name,
+            expected_name=current_name,
+            site_code=site_code,
+            facility_code=facility_code,
+            location_code=location_code,
+            floor_code=floor_code,
+            pattern=pattern,
+        )
+
+    key = (site_code, facility_code, location_code, floor_code, pattern.pk)
+    if seq_cache is not None and key in seq_cache:
+        used_seqs = seq_cache[key]
+    else:
+        used_seqs = _used_rack_sequences(pattern, site_code=site_code, facility_code=facility_code,
+                                          location_code=location_code, floor_code=floor_code)
+
+    seq = next_sequence(used_seqs, pattern.seq_policy)
+    expected = render_name(pattern.template, seq, pattern.seq_width, site_code=site_code,
+                            facility_code=facility_code, location_code=location_code, floor_code=floor_code)
+
+    return ComplianceResult(
+        device=rack,
+        status=ComplianceStatusChoices.NONCOMPLIANT,
+        current_name=current_name,
+        expected_name=expected,
+        site_code=site_code,
+        facility_code=facility_code,
+        location_code=location_code,
+        floor_code=floor_code,
+        pattern=pattern,
+        reason="Name does not match the Rack naming pattern.",
+    )
+
+
+def build_rack_seq_cache(racks, pattern=None):
+    if pattern is None:
+        pattern = RackNamingPattern.objects.first()
+    if not pattern:
+        return {}
+
+    cache = {}
+    needs_site = _pattern_uses(pattern.template, "SITE")
+    needs_facility = _pattern_uses(pattern.template, "FACILITY")
+    needs_location = _pattern_uses(pattern.template, "LOCATION")
+    needs_floor = _pattern_uses(pattern.template, "FLOOR")
+
+    for rack in racks:
+        site_code = get_site_level_code(rack) if needs_site else None
+        facility_code = get_facility_code_for_device(rack) if needs_facility else None
+        location_code = get_location_code_for_device(rack) if needs_location else None
+        floor_code = get_floor_code_for_device(rack) if needs_floor else None
+
+        if ((needs_site and not site_code) or (needs_facility and not facility_code)
+                or (needs_location and not location_code) or (needs_floor and not floor_code)):
+            continue
+
+        key = (site_code, facility_code, location_code, floor_code, pattern.pk)
+        if key not in cache:
+            cache[key] = _used_rack_sequences(pattern, site_code=site_code, facility_code=facility_code,
+                                               location_code=location_code, floor_code=floor_code)
     return cache
 
 

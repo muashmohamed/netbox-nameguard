@@ -15,6 +15,9 @@ sitecode_buttons = [
 pattern_buttons = [
     PluginMenuButton(link="plugins:netbox_nameguard:namingpattern_add", title="Add", icon_class="mdi mdi-plus-thick"),
 ]
+rack_pattern_buttons = [
+    PluginMenuButton(link="plugins:netbox_nameguard:racknamingpattern_add", title="Add", icon_class="mdi mdi-plus-thick"),
+]
 
 menu = PluginMenu(
     label="NameGuard",
@@ -48,11 +51,20 @@ menu = PluginMenu(
                 link_text="Naming Patterns",
                 buttons=pattern_buttons,
             ),
+            PluginMenuItem(
+                link="plugins:netbox_nameguard:racknamingpattern_list",
+                link_text="Rack Naming Patterns",
+                buttons=rack_pattern_buttons,
+            ),
         )),
         ("Enforcement", (
             PluginMenuItem(
                 link="plugins:netbox_nameguard:compliance_list",
                 link_text="Compliance Dashboard",
+            ),
+            PluginMenuItem(
+                link="plugins:netbox_nameguard:rack_compliance_list",
+                link_text="Rack Compliance",
             ),
             PluginMenuItem(
                 link="plugins:netbox_nameguard:renamelog_list",

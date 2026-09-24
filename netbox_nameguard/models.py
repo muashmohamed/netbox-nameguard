@@ -351,10 +351,60 @@ class NamingPattern(NetBoxModel):
                 raise ValidationError({"template": "Template must include at least one of {SITE}/{FACILITY}/{LOCATION}/{FLOOR}."})
 
 
+class RackNamingPattern(NetBoxModel):
+    """
+    A configurable naming template for Racks. Unlike Devices, Racks have no
+    Role concept in NetBox to key a pattern on, so this is a single (or a
+    few, if ever needed) standalone template rather than one per role.
+    Uses the same {SITE}/{FACILITY}/{LOCATION}/{FLOOR}/{SEQ} tokens as
+    NamingPattern - the resolution logic in naming.py is shared, since
+    Rack already carries native site/location fields just like Device.
+    """
+    name = models.CharField(
+        max_length=50,
+        default="Default",
+        help_text="Label for this pattern, e.g. \'Default\' if you only need one.",
+    )
+    template = models.CharField(
+        max_length=100,
+        help_text="Use {SITE}, {FACILITY}, {LOCATION}, {FLOOR}, and {SEQ} tokens.",
+    )
+    seq_width = models.PositiveSmallIntegerField(
+        default=2,
+        help_text="Zero-padded width of the sequence number, e.g. 2 -> 01",
+    )
+    seq_policy = models.CharField(
+        max_length=30,
+        choices=SequencePolicyChoices,
+        default=SequencePolicyChoices.ALWAYS_INCREMENT,
+    )
+    comments = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("name",)
+        verbose_name = "Rack Naming Pattern"
+        verbose_name_plural = "Rack Naming Patterns"
+
+    def __str__(self):
+        return f"{self.name}: {self.template}"
+
+    def get_absolute_url(self):
+        return reverse("plugins:netbox_nameguard:racknamingpattern", args=[self.pk])
+
+    def clean(self):
+        super().clean()
+        if self.template:
+            if "{SEQ}" not in self.template:
+                raise ValidationError({"template": "Template must include the {SEQ} token."})
+            if not any(t in self.template for t in ("{SITE}", "{FACILITY}", "{LOCATION}", "{FLOOR}")):
+                raise ValidationError({"template": "Template must include at least one of {SITE}/{FACILITY}/{LOCATION}/{FLOOR}."})
+
+
 class RenameLog(NetBoxModel):
     """
-    Permanent audit record of every rename NameGuard has applied. Kept even
-    if the device is later deleted, so history is never lost.
+    Permanent audit record of every rename NameGuard has applied - for
+    Devices or Racks. Kept even if the target is later deleted, so history
+    is never lost. Exactly one of device/rack is set per row.
     """
     device = models.ForeignKey(
         to="dcim.Device",
@@ -363,9 +413,16 @@ class RenameLog(NetBoxModel):
         blank=True,
         null=True,
     )
+    rack = models.ForeignKey(
+        to="dcim.Rack",
+        on_delete=models.SET_NULL,
+        related_name="nameguard_rename_logs",
+        blank=True,
+        null=True,
+    )
     device_name_snapshot = models.CharField(
         max_length=64,
-        help_text="Device name at the time of this log entry (survives device deletion).",
+        help_text="Device or Rack name at the time of this log entry (survives deletion of the target).",
     )
     old_name = models.CharField(max_length=64, blank=True)
     new_name = models.CharField(max_length=64)

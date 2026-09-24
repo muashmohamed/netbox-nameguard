@@ -1,0 +1,65 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Preview Rack Rename{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+  This is a <strong>dry run</strong>. Nothing has been changed yet. Review the proposed names below,
+  then tick the confirmation box and click Apply.
+</div>
+
+{% if blocked %}
+<div class="card mb-3">
+  <h5 class="card-header text-bg-orange">Collisions — will NOT be renamed</h5>
+  <table class="table">
+    <thead><tr><th>Rack</th><th>Current Name</th><th>Conflicting Proposed Name</th><th>Reason</th></tr></thead>
+    <tbody>
+      {% for r in blocked %}
+      <tr>
+        <td><a href="{{ r.device.get_absolute_url }}">{{ r.device }}</a></td>
+        <td>{{ r.current_name }}</td>
+        <td>{{ r.expected_name }}</td>
+        <td>{{ r.reason }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+  <h5 class="card-header">Proposed Renames ({{ renameable|length }})</h5>
+  <table class="table table-hover">
+    <thead><tr><th></th><th>Rack</th><th>Current Name</th><th>Proposed Name</th></tr></thead>
+    <tbody>
+      {% for r in renameable %}
+      <tr>
+        <td></td>
+        <td><a href="{{ r.device.get_absolute_url }}">{{ r.device }}</a></td>
+        <td><code>{{ r.current_name }}</code></td>
+        <td><code>{{ r.expected_name }}</code></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="card-footer d-flex justify-content-between">
+    <a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_nameguard:rack_bulk_rename_export' %}">
+      Download CSV of this dry run
+    </a>
+
+    <form method="post" action="{% url 'plugins:netbox_nameguard:rack_bulk_rename_apply' %}" class="d-flex align-items-center gap-2">
+      {% csrf_token %}
+      {% for r in renameable %}<input type="hidden" name="pk" value="{{ r.device.pk }}">{% endfor %}
+      <div class="form-check">
+        {{ confirm_form.confirm }}
+        <label class="form-check-label" for="{{ confirm_form.confirm.id_for_label }}">
+          {{ confirm_form.confirm.label }}
+        </label>
+      </div>
+      <button type="submit" class="btn btn-danger" {% if not renameable %}disabled{% endif %}>
+        Apply {{ renameable|length }} rename(s)
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

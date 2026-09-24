@@ -3,7 +3,7 @@ from django.urls import path
 from netbox.views.generic import ObjectChangeLogView
 
 from . import views
-from .models import AtollType, FacilityType, IslandType, NamingPattern, SiteCode
+from .models import AtollType, FacilityType, IslandType, NamingPattern, RackNamingPattern, SiteCode
 
 urlpatterns = (
     # Atoll Types (glossary)
@@ -76,6 +76,20 @@ urlpatterns = (
         kwargs={"model": NamingPattern},
     ),
 
+    # Rack Naming Patterns
+    path("rack-patterns/", views.RackNamingPatternListView.as_view(), name="racknamingpattern_list"),
+    path("rack-patterns/add/", views.RackNamingPatternEditView.as_view(), name="racknamingpattern_add"),
+    path("rack-patterns/delete/", views.RackNamingPatternBulkDeleteView.as_view(), name="racknamingpattern_bulk_delete"),
+    path("rack-patterns/<int:pk>/", views.RackNamingPatternView.as_view(), name="racknamingpattern"),
+    path("rack-patterns/<int:pk>/edit/", views.RackNamingPatternEditView.as_view(), name="racknamingpattern_edit"),
+    path("rack-patterns/<int:pk>/delete/", views.RackNamingPatternDeleteView.as_view(), name="racknamingpattern_delete"),
+    path(
+        "rack-patterns/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="racknamingpattern_changelog",
+        kwargs={"model": RackNamingPattern},
+    ),
+
     # Rename Log (audit trail)
     path("rename-log/", views.RenameLogListView.as_view(), name="renamelog_list"),
     path("rename-log/<int:pk>/", views.RenameLogView.as_view(), name="renamelog"),
@@ -85,4 +99,11 @@ urlpatterns = (
     path("compliance/preview/", views.BulkRenamePreviewView.as_view(), name="bulk_rename_preview"),
     path("compliance/export/", views.BulkRenameExportView.as_view(), name="bulk_rename_export"),
     path("compliance/apply/", views.BulkRenameApplyView.as_view(), name="bulk_rename_apply"),
+
+    # Rack compliance dashboard + bulk enforcement workflow (kept separate
+    # from Device compliance to avoid ever mixing up a Device pk with a Rack pk)
+    path("rack-compliance/", views.RackComplianceListView.as_view(), name="rack_compliance_list"),
+    path("rack-compliance/preview/", views.RackBulkRenamePreviewView.as_view(), name="rack_bulk_rename_preview"),
+    path("rack-compliance/export/", views.RackBulkRenameExportView.as_view(), name="rack_bulk_rename_export"),
+    path("rack-compliance/apply/", views.RackBulkRenameApplyView.as_view(), name="rack_bulk_rename_apply"),
 )
